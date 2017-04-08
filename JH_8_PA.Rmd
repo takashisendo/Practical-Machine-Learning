@@ -1,0 +1,74 @@
+---
+title: "JH_8_PA(Course Project)"
+author: "Takashi Sendo"
+date: "2017/4/7"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Coursera Practical Machine Learning Project
+### Introduction
+The analysis uses the Weight Lifting Exercises dataset to investigate　predictions model(s) on “how (well)” an activity was performed by using data from belt, forearm, arm, and dumbbell monitors. There are five classifications of this exercise, one method is the correct form of the exercise while the other four are common mistakes: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+ Random forest and decision tree models will be tried and one with better accuracy will be selected to predict classes for 20 test cases.
+
+### prepartion and Dat Loading
+#### packaging
+```{r}
+packages <- c("caret","randomForest","rpart")
+library(caret)
+library(randomForest)
+library(rpart)
+```
+#### Data Loading
+```{r}
+## from local
+training<-read.table("./pml-training.csv", header=TRUE, sep=",")
+testing<-read.table("./pml-testing.csv",header=TRUE, sep=",")
+```
+#### Data Processing
+```{r}
+#Delete columns with NA in testing_data
+training_data <- training[, colSums(is.na(testing)) == 0]
+testing_data  <- testing[, colSums(is.na(testing)) == 0]
+#Delete some irrelevant variables: user_name, raw_timestamp_part_1, raw_timestamp_part_,2 cvtd_timestamp, new_window, num_window
+training_data  <- training_data[, -c(1:7)]
+testing_data   <- testing_data[, -c(1:7)]
+dim(training_data)
+dim(testing_data)
+```
+### Data Partition for Validation
+```{r}
+part_ind<- createDataPartition(y = training_data$classe, p = 0.75, list = FALSE,)
+sub_training_data  <- training_data[part_ind,]
+sub_validating_data   <- training_data[-part_ind,]
+table(training_data$classe)
+```
+
+### Building Predictive Models
+
+#### Random Forest Model
+```{r}
+#Random Forest Model
+rand_forest_model <- randomForest(classe ~. , data = sub_training_data)
+pred_rand_forest  <- predict(rand_forest_model, sub_validating_data, type = "class")
+res_rand_forest    <- confusionMatrix(pred_rand_forest, sub_validating_data$classe)
+res_rand_forest
+```
+#### Decision Tree Model
+```{r}
+#Decision Tree Model
+dec_tree_model  <- rpart(classe ~ ., data = sub_training_data)
+pred_dec_tree   <- predict(dec_tree_model, sub_validating_data, type = "class")
+res_dec_tree   <- confusionMatrix(pred_dec_tree, sub_validating_data$classe)
+res_dec_tree
+```
+Random Forest gives much better accuracy so that Random Forest is selected.
+### Prediction
+Predicting on the test case
+```{r}
+final_pred <- predict(rand_forest_model, testing_data, type = "class")
+final_pred
+```
+
