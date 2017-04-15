@@ -20,6 +20,8 @@ packages <- c("caret","randomForest","rpart")
 library(caret)
 library(randomForest)
 library(rpart)
+library(e1071)
+library(MASS)
 ```
 #### Data Loading
 ```{r}
@@ -39,6 +41,7 @@ dim(training_data)
 dim(testing_data)
 ```
 ### Data Partition for Validation
+Training data thus created are divided 3 to 1 between traning and validating of the model. Validating data will be used to select a better models (thus validating model) based upon training accuracy.
 ```{r}
 part_ind<- createDataPartition(y = training_data$classe, p = 0.75, list = FALSE,)
 sub_training_data  <- training_data[part_ind,]
@@ -47,28 +50,48 @@ table(training_data$classe)
 ```
 
 ### Building Predictive Models
-
+Random Forest, Decision Tree, SVM and lda models are first trained by the training data set, then accuracy will be compared using validating data. One with the best accuracy will be selected for predicting the 20 test cases.
 #### Random Forest Model
 ```{r}
 #Random Forest Model
-rand_forest_model <- randomForest(classe ~. , data = sub_training_data)
-pred_rand_forest  <- predict(rand_forest_model, sub_validating_data, type = "class")
-res_rand_forest    <- confusionMatrix(pred_rand_forest, sub_validating_data$classe)
-res_rand_forest
+model_rf <- randomForest(classe ~. , data = sub_training_data)
+pred_rf  <- predict(model_rf, sub_validating_data)
+res_rf    <- confusionMatrix(pred_rf, sub_validating_data$classe)
+res_rf
+res_rf$overall[1]
+plot(model_rf)
 ```
 #### Decision Tree Model
 ```{r}
 #Decision Tree Model
-dec_tree_model  <- rpart(classe ~ ., data = sub_training_data)
-pred_dec_tree   <- predict(dec_tree_model, sub_validating_data, type = "class")
-res_dec_tree   <- confusionMatrix(pred_dec_tree, sub_validating_data$classe)
-res_dec_tree
+model_dt  <- rpart(classe ~ ., data = sub_training_data,method = "class")
+pred_dt   <- predict(model_dt, sub_validating_data,type = "class")
+## (converting prediciton to the best fitted class)
+res_dt   <- confusionMatrix(pred_dt, sub_validating_data$classe)
+res_dt
+res_dt$overall[1]
 ```
-Random Forest gives much better accuracy so that Random Forest is selected.
-### Prediction
-Predicting on the test case
+#### Support Vector Machine (uses library(e1071))
 ```{r}
-final_pred <- predict(rand_forest_model, testing_data, type = "class")
+model_svm <-svm(classe ~ ., data = sub_training_data)
+pred_svm <- predict(model_svm, sub_validating_data)
+res_svm<-confusionMatrix(pred_svm, sub_validating_data$classe)
+res_svm$overall[1]
+```
+#### Linear Discriminate Analysis (lda) Model (using library(MASS))
+```{r}
+model_lda<-train(classe ~ ., data = sub_training_data,method="lda")
+pred_lda <- predict(model_lda, sub_validating_data)
+res_lda<-confusionMatrix(pred_lda, sub_validating_data$classe)
+res_lda$overall[1]
+```
+
+## Model selections
+Random Forest gives the best accuracy among the models tested so that Random Forest is selected.
+### Prediction
+Predicting on the test case using the Random Forest Model
+```{r}
+final_pred <- predict(model_rf, testing_data)
 final_pred
 ```
 
