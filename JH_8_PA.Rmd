@@ -1,0 +1,97 @@
+---
+title: "JH_8_PA(Course Project)"
+author: "Takashi Sendo"
+date: "2017/4/7"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Coursera Practical Machine Learning Project
+### Introduction
+The analysis uses the Weight Lifting Exercises dataset to investigate　predictions model(s) on “how (well)” an activity was performed by using data from belt, forearm, arm, and dumbbell monitors. There are five classifications of this exercise, one method is the correct form of the exercise while the other four are common mistakes: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+ Random forest and decision tree models will be tried and one with better accuracy will be selected to predict classes for 20 test cases.
+
+### prepartion and Dat Loading
+#### packaging
+```{r}
+packages <- c("caret","randomForest","rpart")
+library(caret)
+library(randomForest)
+library(rpart)
+library(e1071)
+library(MASS)
+```
+#### Data Loading
+```{r}
+## from local
+training<-read.table("./pml-training.csv", header=TRUE, sep=",")
+testing<-read.table("./pml-testing.csv",header=TRUE, sep=",")
+```
+#### Data Processing
+```{r}
+#Delete columns with NA in testing_data
+training_data <- training[, colSums(is.na(testing)) == 0]
+testing_data  <- testing[, colSums(is.na(testing)) == 0]
+#Delete some irrelevant variables: user_name, raw_timestamp_part_1, raw_timestamp_part_,2 cvtd_timestamp, new_window, num_window
+training_data  <- training_data[, -c(1:7)]
+testing_data   <- testing_data[, -c(1:7)]
+dim(training_data)
+dim(testing_data)
+```
+### Data Partition for Validation
+Training data thus created are divided 3 to 1 between traning and validating of the model. Validating data will be used to select a better models (thus validating model) based upon training accuracy.
+```{r}
+part_ind<- createDataPartition(y = training_data$classe, p = 0.75, list = FALSE,)
+sub_training_data  <- training_data[part_ind,]
+sub_validating_data   <- training_data[-part_ind,]
+table(training_data$classe)
+```
+
+### Building Predictive Models
+Random Forest, Decision Tree, SVM and lda models are first trained by the training data set, then accuracy will be compared using validating data. One with the best accuracy will be selected for predicting the 20 test cases.
+#### Random Forest Model
+```{r}
+#Random Forest Model
+model_rf <- randomForest(classe ~. , data = sub_training_data)
+pred_rf  <- predict(model_rf, sub_validating_data)
+res_rf    <- confusionMatrix(pred_rf, sub_validating_data$classe)
+res_rf
+res_rf$overall[1]
+plot(model_rf)
+```
+#### Decision Tree Model
+```{r}
+#Decision Tree Model
+model_dt  <- rpart(classe ~ ., data = sub_training_data,method = "class")
+pred_dt   <- predict(model_dt, sub_validating_data,type = "class")
+## (converting prediciton to the best fitted class)
+res_dt   <- confusionMatrix(pred_dt, sub_validating_data$classe)
+res_dt
+res_dt$overall[1]
+```
+#### Support Vector Machine (uses library(e1071))
+```{r}
+model_svm <-svm(classe ~ ., data = sub_training_data)
+pred_svm <- predict(model_svm, sub_validating_data)
+res_svm<-confusionMatrix(pred_svm, sub_validating_data$classe)
+res_svm$overall[1]
+```
+#### Linear Discriminate Analysis (lda) Model (using library(MASS))
+```{r}
+model_lda<-train(classe ~ ., data = sub_training_data,method="lda")
+pred_lda <- predict(model_lda, sub_validating_data)
+res_lda<-confusionMatrix(pred_lda, sub_validating_data$classe)
+res_lda$overall[1]
+```
+
+## Model selections
+Random Forest gives the best accuracy among the models tested so that Random Forest is selected.
+### Prediction
+Predicting on the test case using the Random Forest Model
+```{r}
+final_pred <- predict(model_rf, testing_data)
+final_pred
+```
+
